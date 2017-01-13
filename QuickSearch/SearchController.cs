@@ -19,7 +19,7 @@ namespace QuickSearch
         private static Object listViewLock = new object();
         private List<Search> previousSearches = new List<Search>();
         private QuickSearchControl quickSearchControl;
-        private BackgroundWorker backgroundWorker = new BackgroundWorker();
+        private BackgroundWorker backgroundWorker;
         private PwDatabase database;
         private EventHandler textUpdateHandler, optionsUpdateHandler;
         private ListView listview;
@@ -49,10 +49,6 @@ namespace QuickSearch
             this.optionsUpdateHandler = new EventHandler(OptionsUpdated);
             this.listview = listview;
             Debug.Assert(listview != null);
-            this.backgroundWorker.WorkerSupportsCancellation = true;
-
-
-
         }
 
         public void ClearPreaviousSeaches()
@@ -63,36 +59,18 @@ namespace QuickSearch
         private void OptionsUpdated(object sender, EventArgs e)
         {
             Debug.WriteLine("Options changed");
-            if (backgroundWorker.IsBusy)
-            {
-                backgroundWorker.CancelAsync();
-            }
-            String userText = this.quickSearchControl.Text.Trim();
-            // if there is no text, don't search
-            if (userText.Equals(String.Empty))
-            {
-                this.quickSearchControl.UpdateSearchStatus(SearchStatus.Normal);
-                return;
-            }
-            else
-            {
-                this.quickSearchControl.UpdateSearchStatus(SearchStatus.Pending);
-            }
-            backgroundWorker = new BackgroundWorker();
-            backgroundWorker.WorkerSupportsCancellation = true;
-
-            backgroundWorker.DoWork += new DoWorkEventHandler(backgroundWorker_DoWork);
-            backgroundWorker.RunWorkerCompleted +=
-                new RunWorkerCompletedEventHandler(backgroundWorker_RunWorkerCompleted);
-
-            backgroundWorker.RunWorkerAsync(userText);
-
+            StartSearch();
         }
 
         private void TextUpdated(object sender, EventArgs e)
         {
             Debug.WriteLine("Text changed to: " + quickSearchControl.Text);
-            if (backgroundWorker.IsBusy)
+            StartSearch();
+        }
+
+        private void StartSearch()
+        {
+            if (backgroundWorker!=null && backgroundWorker.IsBusy)
             {
                 backgroundWorker.CancelAsync();
             }
@@ -115,7 +93,6 @@ namespace QuickSearch
                 new RunWorkerCompletedEventHandler(backgroundWorker_RunWorkerCompleted);
 
             backgroundWorker.RunWorkerAsync(userText);
-
         }
 
         /// <summary>
