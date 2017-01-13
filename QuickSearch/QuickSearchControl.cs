@@ -1,4 +1,5 @@
 ﻿using System;
+using System.ComponentModel;
 using System.Drawing;
 using System.Windows.Forms;
 using QuickSearch.Properties;
@@ -31,9 +32,10 @@ namespace QuickSearch
             {
                 this.comboBoxSearch.TextChanged -= value;
             }
-
-
         }
+
+        public event EventHandler OptionChanged;
+
         public QuickSearchControl()
         {
             InitializeComponent();
@@ -67,8 +69,14 @@ namespace QuickSearch
             this.toolStripDropDownSettings.Items.Add(settingsPanelHost);
             this.toolStripDropDownSettings.KeyDown += new KeyEventHandler(toolStripDropDownSettings_KeyDown);
 
+            Settings.Default.PropertyChanged += DefaultOnPropertyChanged;
 
+        }
 
+        private void DefaultOnPropertyChanged(object sender, PropertyChangedEventArgs propertyChangedEventArgs)
+        {
+            if (propertyChangedEventArgs.PropertyName.IndexOf("Search", StringComparison.Ordinal) >= 0)
+                OnOptionChanged();
         }
 
         void comboBoxSearch_LostFocus(object sender, EventArgs e)
@@ -298,37 +306,14 @@ namespace QuickSearch
             //this.Invalidate();
         }
 
+        private void CheckBox_CheckedChanged(object sender, EventArgs e)
+        {
+            
+        }
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+        protected virtual void OnOptionChanged()
+        {
+            OptionChanged?.Invoke(this, EventArgs.Empty);
+        }
     }
 }

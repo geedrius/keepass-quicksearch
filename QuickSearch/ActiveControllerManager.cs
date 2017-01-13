@@ -53,12 +53,14 @@ namespace QuickSearch
                 //this.qsControl.TextUpdate -= pair.Value.TextUpdateHandler;
                 if (pair.Key == host.Database)
                 {
-                    //this.qsControl.TextUpdate += pair.Value.TextUpdateHandler;
                     this.qsControl.TextChanged += pair.Value.TextUpdateHandler;
+                    this.qsControl.OptionChanged += pair.Value.OptionsUpdateHandler;
+                    
                 }
                 else
                 {
                     this.qsControl.TextChanged -= pair.Value.TextUpdateHandler;
+                    this.qsControl.OptionChanged -= pair.Value.OptionsUpdateHandler;
                 }
             }
 
@@ -78,8 +80,8 @@ namespace QuickSearch
                 {
                     SearchController controller;
                     this.dictionary.TryGetValue(database, out controller);
-                    this.qsControl.TextChanged -=
-                    controller.TextUpdateHandler;
+                    this.qsControl.TextChanged -= controller.TextUpdateHandler;
+                    this.qsControl.OptionChanged -= controller.OptionsUpdateHandler;
 
                     //this.qsControl.comboBoxSearch.TextChanged -=
                     //controller.TextUpdateHandler;
@@ -115,6 +117,7 @@ namespace QuickSearch
             //assuming the opened Database is also the active Database we subscribe it's SearchController
             //so user input will be handled by that Controller
             qsControl.TextChanged += searchCcontroller.TextUpdateHandler;
+            qsControl.OptionChanged += searchCcontroller.OptionsUpdateHandler;
             //qsControl.comboBoxSearch.TextChanged += searchCcontroller.TextUpdateHandler;
             this.qsControl.Enabled = true;
             if (Settings.Default.FocusOnOpen)

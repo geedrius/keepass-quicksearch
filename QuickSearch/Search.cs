@@ -34,6 +34,7 @@ namespace QuickSearch
         bool SearchInPassword;
         bool searchInOther;
         bool SearchExcludeExpired;
+        bool SearchInGroupName;
 
         public List<PwEntry> resultEntries;
 
@@ -51,6 +52,8 @@ namespace QuickSearch
             this.SearchInPassword = Settings.Default.SearchInPassword;
             this.searchInOther = Settings.Default.SearchInOther;
             this.SearchExcludeExpired = Settings.Default.SearchExcludeExpired;
+            this.SearchInGroupName = Settings.Default.SearchInGroupName;
+
             if (Settings.Default.SearchCaseSensitive)
             {
                 this.searchStringComparison = StringComparison.Ordinal;
@@ -63,6 +66,7 @@ namespace QuickSearch
             this.searchStrings = this.userSeachString.Split(new char[] { ' ' }, StringSplitOptions.RemoveEmptyEntries);
             this.resultEntries = new List<PwEntry>();
         }
+
         public Search(PwGroup rootGroup)
         {
             this.rootGroup = rootGroup;
@@ -73,6 +77,7 @@ namespace QuickSearch
             this.SearchInNotes = Settings.Default.SearchInNotes;
             this.SearchInPassword = Settings.Default.SearchInPassword;
             this.searchInOther = Settings.Default.SearchInOther;
+            this.SearchInGroupName = Settings.Default.SearchInGroupName;
         }
 
         public void performSearch(List<PwEntry> entries, BackgroundWorker worker)
@@ -86,13 +91,22 @@ namespace QuickSearch
             Debug.WriteLine("Starting a new Search in Group");
             Stopwatch sw = Stopwatch.StartNew();
 
-
             if (pwGroup != null)
             {
+
+                // do not include entries from expired groups
+                if (this.SearchExcludeExpired && pwGroup.Expires && pwGroup.ExpiryTime >= DateTime.Now)
+                    return;
+
                 searchInList(pwGroup.Entries, worker);
                 foreach (PwGroup group in pwGroup.Groups)
                 {
                     this.performSearch(group, worker);
+
+                    if (worker.CancellationPending)
+                    { 
+                        return;
+                    }
                 }
             }
             Debug.WriteLine("End of Search in Group. Worker cancelled: " + worker.CancellationPending + ". elapsed Ticks: " + sw.ElapsedTicks.ToString() + " elapsed ms: " + sw.ElapsedMilliseconds);
@@ -113,6 +127,39 @@ namespace QuickSearch
                     break;
                 }
 
+                // if search by group is enabled and group name is matched, then 
+                // all entries in that group (but not is subgroups) will be included in results
+                if (this.SearchInGroupName && entry.ParentGroup!=null)
+                {
+                    var allSearchStringsMatched = true;
+                    var groupName = entry.ParentGroup.Name;
+                    foreach (var searchString in searchStrings)
+                    {
+                        // check if cancellation was requested. In this case don't continue with the search
+                        if (worker.CancellationPending)
+                        {
+                            return;
+                        }
+
+                        if (groupName.IndexOf(searchString, this.searchStringComparison) < 0)
+                        {
+                            // no match in group name
+                            // continue search in fields, if required
+                            allSearchStringsMatched = false;
+                            break;
+                        }
+                        // if no break occured all words have been found. This group name is a match
+
+                    }
+
+                    // this group name was a match. add this entry to results list
+                    if (allSearchStringsMatched)
+                    {
+                        this.resultEntries.Add(entry);
+                        // continue search using next entry
+                        continue;
+                    }
+                }
 
                 foreach (KeyValuePair<string, ProtectedString> pair in entry.Strings)
                 {
@@ -180,6 +227,7 @@ namespace QuickSearch
             this.SearchInNotes = Settings.Default.SearchInNotes = true;
             this.SearchInPassword = Settings.Default.SearchInPassword = true;
             this.searchInOther = Settings.Default.SearchInOther = true;
+            this.SearchInGroupName = Settings.Default.SearchInGroupName = true;
 
             this.searchFields = new List<string>();
             if (Settings.Default.SearchInTitle)
@@ -225,7 +273,8 @@ namespace QuickSearch
             this.SearchInPassword == search.SearchInPassword &&
             this.searchInOther == search.searchInOther &&
             this.SearchExcludeExpired == search.SearchExcludeExpired &&
-            this.searchStringComparison == search.searchStringComparison;
+            this.searchStringComparison == search.searchStringComparison &&
+            this.SearchInGroupName == search.SearchInGroupName;
         }
 
         /// <summary>

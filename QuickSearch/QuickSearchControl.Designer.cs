@@ -164,6 +164,7 @@
             this.checkBoxTitle.TabIndex = 0;
             this.checkBoxTitle.Text = "Title";
             this.checkBoxTitle.UseVisualStyleBackColor = true;
+            this.checkBoxTitle.CheckedChanged += new System.EventHandler(this.CheckBox_CheckedChanged);
             this.checkBoxTitle.PreviewKeyDown += new System.Windows.Forms.PreviewKeyDownEventHandler(this.Control_PreviewKeyDown);
             // 
             // checkBoxUserName
@@ -177,6 +178,7 @@
             this.checkBoxUserName.TabIndex = 1;
             this.checkBoxUserName.Text = "User name";
             this.checkBoxUserName.UseVisualStyleBackColor = true;
+            this.checkBoxUserName.CheckedChanged += new System.EventHandler(this.CheckBox_CheckedChanged);
             this.checkBoxUserName.PreviewKeyDown += new System.Windows.Forms.PreviewKeyDownEventHandler(this.Control_PreviewKeyDown);
             // 
             // checkBoxNotes
@@ -190,6 +192,7 @@
             this.checkBoxNotes.TabIndex = 2;
             this.checkBoxNotes.Text = "Notes";
             this.checkBoxNotes.UseVisualStyleBackColor = true;
+            this.checkBoxNotes.CheckedChanged += new System.EventHandler(this.CheckBox_CheckedChanged);
             this.checkBoxNotes.PreviewKeyDown += new System.Windows.Forms.PreviewKeyDownEventHandler(this.Control_PreviewKeyDown);
             // 
             // checkBoxGroupName
@@ -197,13 +200,13 @@
             this.checkBoxGroupName.AutoSize = true;
             this.checkBoxGroupName.Checked = global::QuickSearch.Properties.Settings.Default.SearchInGroupName;
             this.checkBoxGroupName.DataBindings.Add(new System.Windows.Forms.Binding("Checked", global::QuickSearch.Properties.Settings.Default, "SearchInGroupName", true, System.Windows.Forms.DataSourceUpdateMode.OnPropertyChanged));
-            this.checkBoxGroupName.Enabled = false;
             this.checkBoxGroupName.Location = new System.Drawing.Point(86, 3);
             this.checkBoxGroupName.Name = "checkBoxGroupName";
             this.checkBoxGroupName.Size = new System.Drawing.Size(84, 17);
             this.checkBoxGroupName.TabIndex = 3;
             this.checkBoxGroupName.Text = "Group name";
             this.checkBoxGroupName.UseVisualStyleBackColor = true;
+            this.checkBoxGroupName.CheckedChanged += new System.EventHandler(this.CheckBox_CheckedChanged);
             this.checkBoxGroupName.PreviewKeyDown += new System.Windows.Forms.PreviewKeyDownEventHandler(this.Control_PreviewKeyDown);
             // 
             // checkBoxOther
@@ -217,6 +220,7 @@
             this.checkBoxOther.TabIndex = 6;
             this.checkBoxOther.Text = "Other fields";
             this.checkBoxOther.UseVisualStyleBackColor = true;
+            this.checkBoxOther.CheckedChanged += new System.EventHandler(this.CheckBox_CheckedChanged);
             this.checkBoxOther.PreviewKeyDown += new System.Windows.Forms.PreviewKeyDownEventHandler(this.Control_PreviewKeyDown);
             // 
             // checkBoxPassword
@@ -230,6 +234,7 @@
             this.checkBoxPassword.TabIndex = 4;
             this.checkBoxPassword.Text = "Password";
             this.checkBoxPassword.UseVisualStyleBackColor = true;
+            this.checkBoxPassword.CheckedChanged += new System.EventHandler(this.CheckBox_CheckedChanged);
             this.checkBoxPassword.PreviewKeyDown += new System.Windows.Forms.PreviewKeyDownEventHandler(this.Control_PreviewKeyDown);
             // 
             // checkBoxUrl
@@ -244,6 +249,7 @@
             this.checkBoxUrl.TabIndex = 5;
             this.checkBoxUrl.Text = "URL";
             this.checkBoxUrl.UseVisualStyleBackColor = true;
+            this.checkBoxUrl.CheckedChanged += new System.EventHandler(this.CheckBox_CheckedChanged);
             this.checkBoxUrl.PreviewKeyDown += new System.Windows.Forms.PreviewKeyDownEventHandler(this.Control_PreviewKeyDown);
             // 
             // groupBoxOptions
@@ -287,6 +293,7 @@
             this.checkBoxCase.TabIndex = 0;
             this.checkBoxCase.Text = "Case-sensitive";
             this.checkBoxCase.UseVisualStyleBackColor = true;
+            this.checkBoxCase.CheckedChanged += new System.EventHandler(this.CheckBox_CheckedChanged);
             this.checkBoxCase.PreviewKeyDown += new System.Windows.Forms.PreviewKeyDownEventHandler(this.Control_PreviewKeyDown);
             // 
             // checkBoxExclude
@@ -300,12 +307,13 @@
             this.checkBoxExclude.TabIndex = 1;
             this.checkBoxExclude.Text = "Exclude expired entries";
             this.checkBoxExclude.UseVisualStyleBackColor = true;
+            this.checkBoxExclude.CheckedChanged += new System.EventHandler(this.CheckBox_CheckedChanged);
             this.checkBoxExclude.PreviewKeyDown += new System.Windows.Forms.PreviewKeyDownEventHandler(this.Control_PreviewKeyDown);
             // 
             // comboBoxSearch
             // 
-            this.comboBoxSearch.Anchor = ((System.Windows.Forms.AnchorStyles)(((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Left)
-                        | System.Windows.Forms.AnchorStyles.Right)));
+            this.comboBoxSearch.Anchor = ((System.Windows.Forms.AnchorStyles)(((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Left) 
+            | System.Windows.Forms.AnchorStyles.Right)));
             this.comboBoxSearch.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
             this.comboBoxSearch.Location = new System.Drawing.Point(19, 0);
             this.comboBoxSearch.Margin = new System.Windows.Forms.Padding(0);

@@ -14,32 +14,39 @@ using KeePass.UI;
 namespace QuickSearch
 {
 
-    class SearchController
+    internal class SearchController
     {
-        static Object listViewLock = new object();
-        List<Search> previousSearches = new List<Search>();
-        QuickSearchControl quickSearchControl;
-        BackgroundWorker backgroundWorker = new BackgroundWorker();
-        PwDatabase database;
-        EventHandler textUpdateHandler;
-        ListView listview;
+        private static Object listViewLock = new object();
+        private List<Search> previousSearches = new List<Search>();
+        private QuickSearchControl quickSearchControl;
+        private BackgroundWorker backgroundWorker = new BackgroundWorker();
+        private PwDatabase database;
+        private EventHandler textUpdateHandler, optionsUpdateHandler;
+        private ListView listview;
         //delegate void qsControlUpdateMethod(SearchStatus status)= qsUpdate;
         //MethodInvoker qsControlUpdateMethod = delegate (qsUpdate);
-        delegate void QsUpdateMethod(SearchStatus status, bool cancellationPending);
-        QsUpdateMethod qsUpdateMethod;
+        private delegate void QsUpdateMethod(SearchStatus status);
+
+        private QsUpdateMethod qsUpdateMethod;
 
         public EventHandler TextUpdateHandler
         {
             get { return textUpdateHandler; }
-
         }
+
+        public EventHandler OptionsUpdateHandler
+        {
+            get { return optionsUpdateHandler; }
+        }
+
 
         public SearchController(QuickSearchControl qsCcontrol, PwDatabase database, ListView listview)
         {
             this.qsUpdateMethod = qsUpdate;
             this.quickSearchControl = qsCcontrol;
             this.database = database;
-            this.textUpdateHandler = new EventHandler(control_TextUpdate);
+            this.textUpdateHandler = new EventHandler(TextUpdated);
+            this.optionsUpdateHandler = new EventHandler(OptionsUpdated);
             this.listview = listview;
             Debug.Assert(listview != null);
             this.backgroundWorker.WorkerSupportsCancellation = true;
@@ -53,7 +60,36 @@ namespace QuickSearch
             this.previousSearches.Clear();
         }
 
-        void control_TextUpdate(object sender, EventArgs e)
+        private void OptionsUpdated(object sender, EventArgs e)
+        {
+            Debug.WriteLine("Options changed");
+            if (backgroundWorker.IsBusy)
+            {
+                backgroundWorker.CancelAsync();
+            }
+            String userText = this.quickSearchControl.Text.Trim();
+            // if there is no text, don't search
+            if (userText.Equals(String.Empty))
+            {
+                this.quickSearchControl.UpdateSearchStatus(SearchStatus.Normal);
+                return;
+            }
+            else
+            {
+                this.quickSearchControl.UpdateSearchStatus(SearchStatus.Pending);
+            }
+            backgroundWorker = new BackgroundWorker();
+            backgroundWorker.WorkerSupportsCancellation = true;
+
+            backgroundWorker.DoWork += new DoWorkEventHandler(backgroundWorker_DoWork);
+            backgroundWorker.RunWorkerCompleted +=
+                new RunWorkerCompletedEventHandler(backgroundWorker_RunWorkerCompleted);
+
+            backgroundWorker.RunWorkerAsync(userText);
+
+        }
+
+        private void TextUpdated(object sender, EventArgs e)
         {
             Debug.WriteLine("Text changed to: " + quickSearchControl.Text);
             if (backgroundWorker.IsBusy)
@@ -75,184 +111,135 @@ namespace QuickSearch
             backgroundWorker.WorkerSupportsCancellation = true;
 
             backgroundWorker.DoWork += new DoWorkEventHandler(backgroundWorker_DoWork);
-            backgroundWorker.RunWorkerCompleted += new RunWorkerCompletedEventHandler(backgroundWorker_RunWorkerCompleted);
+            backgroundWorker.RunWorkerCompleted +=
+                new RunWorkerCompletedEventHandler(backgroundWorker_RunWorkerCompleted);
 
             backgroundWorker.RunWorkerAsync(userText);
 
         }
+
         /// <summary>
         /// This method is called by the UI thread. The ListView usually can only be updated from this thread.
         /// </summary>
         /// <param name="sender"></param>
         /// <param name="e"></param>
-        void backgroundWorker_RunWorkerCompleted(object sender, RunWorkerCompletedEventArgs e)
+        private void backgroundWorker_RunWorkerCompleted(object sender, RunWorkerCompletedEventArgs e)
         {
-            ListViewItem[] items = e.Result as ListViewItem[];
-            if (items != null)
+            if (e.Cancelled || e.Error != null)
+                return;
+
+            var items = e.Result as ListViewItem[];
+            
+            /* don't make this. text will be overriden when selection index in listview changes
+            string itemsFound = items.Length.ToString() + " " +
+            KPRes.SearchItemsFoundSmall;
+            Program.MainForm.SetStatusEx(itemsFound);
+            */
+            Stopwatch sw = Stopwatch.StartNew();
+            lock (listViewLock)
             {
-                /* don't make this. text will be overriden when selection index in listview changes
-                string itemsFound = items.Length.ToString() + " " +
-                KPRes.SearchItemsFoundSmall;
-                Program.MainForm.SetStatusEx(itemsFound);
-                */
-                Stopwatch sw = Stopwatch.StartNew();
                 this.listview.BeginUpdate();
-
                 this.listview.Items.Clear();
-                this.listview.Items.AddRange(items);
-                this.listview.Items[0].Selected = true;
+                if (items != null && items.Length>0)
+                {
+                    this.listview.Items.AddRange(items);
+                    this.listview.Items[0].Selected = true;
+                }
                 this.listview.EndUpdate();
-                Debug.WriteLine("ListView updated in elapsed Ticks: " + sw.ElapsedTicks.ToString() + ", elapsed ms: " + sw.ElapsedMilliseconds);
-
-                //(Program.MainForm.Controls["m_statusMain"] as ToolStrip).Items["m_statusPartSelected"].Text = String.Empty;
-
             }
+            Debug.WriteLine("ListView updated in elapsed Ticks: " + sw.ElapsedTicks.ToString() + ", elapsed ms: " +
+                            sw.ElapsedMilliseconds);
 
-
+            //(Program.MainForm.Controls["m_statusMain"] as ToolStrip).Items["m_statusPartSelected"].Text = String.Empty;
         }
 
-        void backgroundWorker_DoWork(object sender, DoWorkEventArgs e)
+        private void backgroundWorker_DoWork(object sender, DoWorkEventArgs e)
         {
-            BackgroundWorker worker = (BackgroundWorker)sender;
+            BackgroundWorker worker = (BackgroundWorker) sender;
 
 
 
             //this.quickSearchControl.UpdateSearchStatus()
-            String userText = (string)e.Argument;
+            String userText = (string) e.Argument;
             Search newSearch = new Search(userText);
-
+            e.Result = null;
             bool previousSearchFound = false;
-            lock (this)
-            {
-                //this.quickSearchControl.Invoke(new MethodInvoker(delegate()
-                //{
-                //    quickSearchControl.UpdateSearchStatus(SearchStatus.Pending);
-                //}));
 
-                for (int i = previousSearches.Count - 1; i >= 0; i--)
+            var previousSearchesSnapshot = new List<Search>();
+
+            lock (previousSearches)
+                previousSearchesSnapshot.AddRange(previousSearches);
+            
+            foreach (var previousSearch in previousSearchesSnapshot)
+            {
+                if (previousSearch.ParamEquals(newSearch))
                 {
-                    if (previousSearches[i].ParamEquals(newSearch))
+                    previousSearchFound = true;
+                    newSearch = previousSearch;
+                    Debug.WriteLine("found exact match in previousSearches");
+                    break;
+                }
+            }
+
+            if (worker.CancellationPending)
+                return;
+
+            if (previousSearchFound == false)
+            {
+
+                foreach (var previousSearch in previousSearchesSnapshot)
+                {
+                    if (previousSearch.IsRefinedSearch(newSearch))
                     {
+
                         previousSearchFound = true;
-                        newSearch = previousSearches[i];
-                        Debug.WriteLine("found exact match in previousSearches");
+                        newSearch.performSearch(previousSearch.resultEntries, worker);
+                        Debug.WriteLine("Search is refined search");
                         break;
                     }
                 }
-                if (previousSearchFound == false)
-                {
-                    for (int i = previousSearches.Count - 1; i >= 0; i--)
-                    {
-                        if (previousSearches[i].IsRefinedSearch(newSearch))
-                        {
-
-                            previousSearchFound = true;
-                            newSearch.performSearch(previousSearches[i].resultEntries, worker);
-                            Debug.WriteLine("Search is refined search");
-                            break;
-                        }
-                    }
-                }
             }
+
+            if (worker.CancellationPending)
+                return;
+
             if (previousSearchFound == false)
             {
                 newSearch.performSearch(database.RootGroup, worker);
-
             }
-            //if (!worker.CancellationPending)
-            //{
-            lock (this)
-            {
 
+            var items = new ListViewItem[newSearch.resultEntries.Count];
+            
+            for (int i=0; i<newSearch.resultEntries.Count; i++)
+            {
+                if (worker.CancellationPending)
+                    return;
+
+                var entry = newSearch.resultEntries[i];
+                items[i] = AddEntryToList(entry);
+            }
+
+            if (worker.CancellationPending)
+                return;
+
+            e.Result = items;
+            
+            lock (previousSearches)
                 this.previousSearches.Add(newSearch);
-                if (!worker.CancellationPending)
-                {
-                    SearchStatus status;
-                    if (newSearch.resultEntries.Count == 0)
-                    {
-                        status = SearchStatus.Error;
-                    }
-                    else
-                    {
-                        status = SearchStatus.Success;
-                    }
-                    //this.quickSearchControl.Invoke(new MethodInvoker(delegate()
-                    //{
-                    //    quickSearchControl.UpdateSearchStatus(status);
-                    //}));
-                    this.quickSearchControl.Invoke(qsUpdateMethod, status, worker.CancellationPending);
 
-                }
-            }
-            //}
-            //e.Result = newSearch.resultEntries;
-
-            // for testing
-            // only update the ListView if there are results
-            if (newSearch.resultEntries.Count != 0)
+            SearchStatus status;
+            if (newSearch.resultEntries.Count == 0)
             {
-                // using the ListView itself for locking caused problems
-
-                if (!worker.CancellationPending)
-                {
-
-                    //this.listview.Groups.Clear();
-
-                    ListViewItem[] items = new ListViewItem[newSearch.resultEntries.Count];
-                    int i = 0;
-                    foreach (PwEntry entry in newSearch.resultEntries)
-                    {
-                        if (worker.CancellationPending)
-                        {
-
-
-                            return;
-                            //break;
-                        }
-                        items[i] = AddEntryToList(entry);
-                        i++;
-                    }
-                    lock (listViewLock)
-                    {
-                        if (!worker.CancellationPending)
-                        {
-
-                            //Control.CheckForIllegalCrossThreadCalls = false;
-                            //this.listview.BeginUpdate();
-
-                            //this.listview.Items.Clear();
-                            //this.listview.Items.AddRange(items);
-                            //this.listview.Items[0].Selected = true;
-                            //this.listview.EndUpdate();
-                            ////Debug.WriteLine("Setting CheckForIllegalCrossThreadCalls to true");
-                            //Control.CheckForIllegalCrossThreadCalls = true;
-                            e.Result = items;
-                        }
-                    }
-                }
+                status = SearchStatus.Error;
+            }
+            else
+            {
+                status = SearchStatus.Success;
             }
 
-
-
-
-
-
-
-
-
-            // set Cancel if necessary. Otherwise the completed method won't know about the status.
-            //if (worker.CancellationPending)
-            //{
-            //    e.Cancel = true;
-            //}
-            //else // the search was completed
-            //{
-
-            //}
-
-
-
+            this.quickSearchControl.Invoke(qsUpdateMethod, status);
         }
+
         private ListViewItem AddEntryToList(PwEntry pe)
         {
 
@@ -375,14 +362,9 @@ namespace QuickSearch
         }
 
 
-        void qsUpdate(SearchStatus status, bool cancellationPending)
+        void qsUpdate(SearchStatus status)
         {
-
-            if (!cancellationPending)
-            {
-                this.quickSearchControl.UpdateSearchStatus(status);
-            }
-
+            this.quickSearchControl.UpdateSearchStatus(status);
         }
 
     }
