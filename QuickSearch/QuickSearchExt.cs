@@ -16,10 +16,10 @@ namespace QuickSearch
 
         QuickSearchControl qsControl;
         
-        public override string UpdateUrl
-        {
-            get { return @"https://raw.githubusercontent.com/iamkarlson/keepass-quicksearch/master/quicksearchVERSION.txt"; }
-        }
+        //public override string UpdateUrl
+        //{
+        //    get { return @"https://raw.githubusercontent.com/iamkarlson/keepass-quicksearch/master/quicksearchVERSION.txt"; }
+        //}
         
         public override bool Initialize(IPluginHost host)
         {
@@ -54,6 +54,8 @@ namespace QuickSearch
             //testend ------------
 
             GlobalWindowManager.WindowAdded += new EventHandler<GwmWindowEventArgs>(GlobalWindowManager_WindowAdded);
+
+            //host.MainWindow.
 
             return true;
             //return base.Initialize(host);
@@ -114,6 +116,7 @@ namespace QuickSearch
             mainForm.KeyPreview = true;
             mainForm.KeyDown += (sender, args) =>
             {
+                //args.Handled = true;
                 if (args.KeyData == (Keys.Shift|Keys.Control|Keys.F)) {
                     myControl.comboBoxSearch.Focus();
                 }
